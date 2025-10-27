@@ -121,31 +121,68 @@ def compute_mbti(answers):
 st.title("📚 文学 MBTI 测试")
 st.write("回答以下 20 个问题，看看你是哪种文学类型！")
 
-with st.form(key='mbti_form'):
-    answers = {}
-    cnt = 0
-    PLACEHOLDER = "—— 请选择 ——"
-    for idx, q in enumerate(QUESTIONS, start=1):
-        cnt = idx
-        st.write(f"**{cnt}.{q['text']}**")
+# 我们使用自定义按钮组来模拟单选但初始无选中（所有选项显示空心圆），
+# 只有当用户点击某个选项时才会显示实心圆并记录答案。
+answers = {}
+for idx, q in enumerate(QUESTIONS, start=1):
+    st.write(f"**{idx}.{q['text']}**")
 
-        # 使用占位选项使得打开页面时看起来像 "未选择"
-        labels = [PLACEHOLDER] + [opt[0] for opt in q['options']]
-        choice = st.selectbox("", labels, key=q['id'])
+    # 取出选项文本与其对应值
+    textA, valA = q['options'][0]
+    textB, valB = q['options'][1]
 
-        # 将选项文本映射为轴上的值（如 'E' / 'I'）
-        label_to_val = {opt[0]: opt[1] for opt in q['options']}
-        if choice == PLACEHOLDER:
-            chosen_value = None
-        else:
-            chosen_value = label_to_val.get(choice)
 
-        answers[q['id']] = chosen_value
-        st.divider()
-    submitted = st.form_submit_button("提交并查看结果")
+    # 初始化 session_state 键（仅在首次运行时设置默认值）
+    choice_key = f"{q['id']}_choice"
+    a_key = f"{q['id']}_A_chk"
+    b_key = f"{q['id']}_B_chk"
+    if choice_key not in st.session_state:
+        st.session_state[choice_key] = None
+    if a_key not in st.session_state:
+        st.session_state[a_key] = False
+    if b_key not in st.session_state:
+        st.session_state[b_key] = False
+
+    # 回调函数：当 A 被改变时，若变为 True 则取消 B 并记录选择；若变为 False 则清空选择（若当前选择为 A）
+    def make_on_change_a(a_k=a_key, b_k=b_key, choice_k=choice_key, v=valA):
+        def _on_change_a():
+            if st.session_state.get(a_k):
+                st.session_state[b_k] = False
+                st.session_state[choice_k] = v
+            else:
+                if st.session_state.get(choice_k) == v:
+                    st.session_state[choice_k] = None
+        return _on_change_a
+
+    def make_on_change_b(a_k=a_key, b_k=b_key, choice_k=choice_key, v=valB):
+        def _on_change_b():
+            if st.session_state.get(b_k):
+                st.session_state[a_k] = False
+                st.session_state[choice_k] = v
+            else:
+                if st.session_state.get(choice_k) == v:
+                    st.session_state[choice_k] = None
+        return _on_change_b
+
+    # 每个选项占一行，使用 checkbox 来实现单次点击选择。
+    # 使用 on_change 回调以在回调中修改其他 widget 的状态，避免运行时修改已创建 widget 的错误。
+    # 不再在文本前添加 ○/●，让原生 checkbox 方框承担选中显示
+    labelA = textA
+    labelB = textB
+
+    chkA = st.checkbox(labelA, key=a_key, on_change=make_on_change_a())
+    chkB = st.checkbox(labelB, key=b_key, on_change=make_on_change_b())
+
+    st.divider()
+
+# 提交按钮（普通按钮，非表单）
+submitted = st.button("提交并查看结果")
 
 if submitted:
-    # 校验是否有未填题目
+    # 从 session_state 中收集答案并校验
+    for q in QUESTIONS:
+        answers[q['id']] = st.session_state.get(f"{q['id']}_choice")
+
     unanswered = [i+1 for i, q in enumerate(QUESTIONS) if answers.get(q['id']) is None]
     if unanswered:
         st.error("以下题目未填写，请完成后再提交：" + '，'.join([f"第{n}题" for n in unanswered]))
