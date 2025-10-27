@@ -7,11 +7,13 @@
 有多种工具可以管理python环境，再次只展示使用anaconda的方法
 
 -  创建虚拟环境
+
     `conda create -n literary_mbti python=3.13`
 
 - 安装需要的库
+
     `conda activate literary_mbti`
-    
+
     `pip install streamlit pandas numpy pyarrow`
 
  **2.本地运行文件**
@@ -20,8 +22,8 @@
 
 ## 云端部署
 1. 注册/登录
-2. 
-   在https://share.streamlit.io/ 网站中登录或注册自己的账号，建议直接使用github账号进行登录。
+
+2. 在https://share.streamlit.io/ 网站中登录或注册自己的账号，建议直接使用github账号进行登录。
 
 3. fork该仓库
 
