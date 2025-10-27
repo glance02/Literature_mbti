@@ -123,63 +123,78 @@ st.write("回答以下 20 个问题，看看你是哪种文学类型！")
 
 with st.form(key='mbti_form'):
     answers = {}
-    cnt=0;
-    for q in QUESTIONS:
-        cnt+=1
+    cnt = 0
+    PLACEHOLDER = "—— 请选择 ——"
+    for idx, q in enumerate(QUESTIONS, start=1):
+        cnt = idx
         st.write(f"**{cnt}.{q['text']}**")
-        choice = st.radio("", [opt[0] for opt in q['options']], key=q['id'], horizontal=False)
-        chosen_value = dict(q['options'])[choice]
+
+        # 使用占位选项使得打开页面时看起来像 "未选择"
+        labels = [PLACEHOLDER] + [opt[0] for opt in q['options']]
+        choice = st.selectbox("", labels, key=q['id'])
+
+        # 将选项文本映射为轴上的值（如 'E' / 'I'）
+        label_to_val = {opt[0]: opt[1] for opt in q['options']}
+        if choice == PLACEHOLDER:
+            chosen_value = None
+        else:
+            chosen_value = label_to_val.get(choice)
+
         answers[q['id']] = chosen_value
         st.divider()
     submitted = st.form_submit_button("提交并查看结果")
 
 if submitted:
-    mbti, breakdown = compute_mbti(answers)
-    st.success(f"你的文学 MBTI 类型是：**{mbti}**")
-
-    profile = MBTI_PROFILES.get(mbti)
-    if profile:
-        st.header(profile['title'])
-        st.write(profile['description'])
-        st.write("**偏好类型：** " + '，'.join(profile['kind']))
-        st.write("**推荐书目：**")
-        for book in profile['books']:
-            st.write(f"- {book}")
+    # 校验是否有未填题目
+    unanswered = [i+1 for i, q in enumerate(QUESTIONS) if answers.get(q['id']) is None]
+    if unanswered:
+        st.error("以下题目未填写，请完成后再提交：" + '，'.join([f"第{n}题" for n in unanswered]))
     else:
-        st.warning("暂无该类型的详细信息。")
-
-    # 改进版：更清晰的维度计分显示
-    # ------------------------------------
-    st.write("---")
-    st.subheader("维度计分结果")
-
-    axis_labels = {
-        "EI": "焦点取向（E: 情节驱动 / I: 内心世界）",
-        "SN": "风格取向（S: 现实主义 / N: 想象主义）",
-        "TF": "决策取向（T: 逻辑架构 / F: 情感共鸣）",
-        "JP": "态度取向（J: 闭合结局 / P: 开放诠释）"
-    }
-
-    for axis, scores in breakdown.items():
-        left_key, right_key = list(scores.keys())
-        left_score = scores[left_key]
-        right_score = scores[right_key]
-
-        # 高亮当前倾向
-        if left_score > right_score:
-            tendency = left_key
-            tendency_label = f"**{left_key} 型倾向更明显**"
-        elif right_score > left_score:
-            tendency = right_key
-            tendency_label = f"**{right_key} 型倾向更明显**"
+        mbti, breakdown = compute_mbti(answers)
+        st.success(f"你的文学 MBTI 类型是：**{mbti}**")
+        profile = MBTI_PROFILES.get(mbti)
+        if profile:
+            st.header(profile['title'])
+            st.write(profile['description'])
+            st.write("**偏好类型：** " + '，'.join(profile['kind']))
+            st.write("**推荐书目：**")
+            for book in profile['books']:
+                st.write(f"- {book}")
         else:
-            tendency = "平衡"
-            tendency_label = "两者倾向接近"
+            st.warning("暂无该类型的详细信息。")
 
-        # 视觉显示
-        st.markdown(f"#### {axis_labels[axis]}")
-        progress = left_score / (left_score + right_score)
-        st.progress(progress)
-        st.write(f"{left_key}: {left_score}  vs  {right_key}:   {right_score} —— {tendency_label}")
-        st.markdown("---")
+        # 改进版：更清晰的维度计分显示
+        # ------------------------------------
+        st.write("---")
+        st.subheader("维度计分结果")
+
+        axis_labels = {
+            "EI": "焦点取向（E: 情节驱动 / I: 内心世界）",
+            "SN": "风格取向（S: 现实主义 / N: 想象主义）",
+            "TF": "决策取向（T: 逻辑架构 / F: 情感共鸣）",
+            "JP": "态度取向（J: 闭合结局 / P: 开放诠释）"
+        }
+
+        for axis, scores in breakdown.items():
+            left_key, right_key = list(scores.keys())
+            left_score = scores[left_key]
+            right_score = scores[right_key]
+
+            # 高亮当前倾向
+            if left_score > right_score:
+                tendency = left_key
+                tendency_label = f"**{left_key} 型倾向更明显**"
+            elif right_score > left_score:
+                tendency = right_key
+                tendency_label = f"**{right_key} 型倾向更明显**"
+            else:
+                tendency = "平衡"
+                tendency_label = "两者倾向接近"
+
+            # 视觉显示
+            st.markdown(f"#### {axis_labels[axis]}")
+            progress = left_score / (left_score + right_score)
+            st.progress(progress)
+            st.write(f"{left_key}: {left_score}  vs  {right_key}:   {right_score} —— {tendency_label}")
+            st.markdown("---")
 
